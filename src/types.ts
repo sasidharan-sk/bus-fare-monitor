@@ -1,5 +1,20 @@
 import type { Route } from "./store.js";
-import type { ScrapedResult } from "./scraper/redbus.js";
+
+export type Site = "redbus" | "cleartrip";
+
+export interface Bus {
+  operator: string;
+  departure: string;
+  price: number;
+}
+
+export interface ScrapedResult {
+  site: Site;
+  min: number | null;
+  count: number;
+  cheapest: Bus[];
+  note?: string;
+}
 
 export interface RouteResult {
   route: Route;

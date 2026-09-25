@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { PRICES_FILE, ROUTES_FILE } from "./config.js";
+import type { Site } from "./types.js";
 
 export interface Route {
   id: number;
@@ -7,6 +8,7 @@ export interface Route {
   destination: string;
   date: string;
   windows: string[];
+  site?: Site;
 }
 
 export interface PriceRecord {
@@ -35,10 +37,16 @@ export function saveRoutes(routes: Route[]): void {
   writeJson(ROUTES_FILE, routes);
 }
 
-export function addRoute(source: string, destination: string, date: string, windows: string[]): Route {
+export function addRoute(
+  source: string,
+  destination: string,
+  date: string,
+  windows: string[],
+  site: Site = "redbus",
+): Route {
   const routes = loadRoutes();
   const id = routes.reduce((max, r) => Math.max(max, r.id), 0) + 1;
-  const route: Route = { id, source, destination, date, windows: [...windows].sort() };
+  const route: Route = { id, source, destination, date, windows: [...windows].sort(), site };
   routes.push(route);
   saveRoutes(routes);
   return route;
@@ -52,9 +60,16 @@ export function removeRoute(id: number): boolean {
   return true;
 }
 
-export function routeKey(source: string, destination: string, date: string, windows: string[]): string {
+export function routeKey(
+  site: Site,
+  source: string,
+  destination: string,
+  date: string,
+  windows: string[],
+): string {
   const base = `${source}|${destination}|${date}`;
-  return windows.length > 0 ? `${base}|${[...windows].sort().join(",")}` : base;
+  const win = windows.length > 0 ? `|${[...windows].sort().join(",")}` : "";
+  return `${site}:${base}${win}`;
 }
 
 export function loadPrices(): Record<string, PriceRecord> {

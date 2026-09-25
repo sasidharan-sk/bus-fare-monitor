@@ -1,4 +1,5 @@
 import { chromium, type Browser, type Page } from "playwright";
+import type { ScrapedResult } from "../types.js";
 
 const SEARCH_URL = (src: string, dst: string, doj: string) =>
   `https://www.redbus.in/rpw/api/searchResults?fromCity=${src}&toCity=${dst}&DOJ=${doj}` +
@@ -10,20 +11,6 @@ const LAUNCH_ARGS = ["--disable-http2", "--disable-blink-features=AutomationCont
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
   "(KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36";
-
-export interface Bus {
-  operator: string;
-  departure: string;
-  price: number;
-}
-
-export interface ScrapedResult {
-  site: "redbus";
-  min: number | null;
-  count: number;
-  cheapest: Bus[];
-  note?: string;
-}
 
 interface RawInventory {
   travelsName?: string;
@@ -57,7 +44,7 @@ function inWindows(hour: number, windows: string[]): boolean {
 export function parseResult(data: RawResponse, windows: string[]): ScrapedResult {
   if (data.error !== undefined) throw new Error(`RedBus API error ${data.error}`);
   const inventories = data.data?.inventories ?? [];
-  const buses: Bus[] = [];
+  const buses: ScrapedResult["cheapest"] = [];
   for (const inv of inventories) {
     const fares = inv.fareList ?? [];
     if (fares.length === 0) continue;

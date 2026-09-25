@@ -2,10 +2,13 @@ import { PRICE_DROP_THRESHOLD, resolveCity } from "./config.js";
 import { send } from "./alerts.js";
 import { dropText, summaryText } from "./messages.js";
 import { loadPrices, loadRoutes, savePrices, routeKey } from "./store.js";
+import { CleartripScraper } from "./scraper/cleartrip.js";
 import { RedbusScraper } from "./scraper/redbus.js";
-import type { CheckResult, RouteResult } from "./types.js";
+import type { CheckResult, RouteResult, Site, ScrapedResult } from "./types.js";
 
 let running = false;
+
+const siteOf = (r: { site?: Site }): Site => r.site ?? "redbus";
 
 export async function runCheck(announce = false): Promise<CheckResult> {
   if (running) return { status: "busy", results: [], errors: [] };
@@ -17,10 +20,14 @@ export async function runCheck(announce = false): Promise<CheckResult> {
     const prices = loadPrices();
     const results: RouteResult[] = [];
     const errors: string[] = [];
-    const scraper = new RedbusScraper();
+
+    const needsRedbus = routes.some((r) => siteOf(r) === "redbus");
+    const needsCleartrip = routes.some((r) => siteOf(r) === "cleartrip");
+    const redbus = needsRedbus ? new RedbusScraper() : null;
+    const cleartrip = needsCleartrip ? new CleartripScraper() : null;
 
     try {
-      await scraper.start();
+      if (redbus) await redbus.start();
       for (const route of routes) {
         const src = resolveCity(route.source);
         const dst = resolveCity(route.destination);
@@ -28,9 +35,15 @@ export async function runCheck(announce = false): Promise<CheckResult> {
           errors.push(`Unknown city on route #${route.id}`);
           continue;
         }
-        const key = routeKey(src.name, dst.name, route.date, route.windows);
+        const site = siteOf(route);
+        const key = routeKey(site, src.name, dst.name, route.date, route.windows);
         try {
-          const data = await scraper.fetch(src.id, dst.id, route.date, route.windows);
+          let data: ScrapedResult;
+          if (site === "cleartrip") {
+            data = await cleartrip!.fetch(src.name, dst.name, route.date, route.windows);
+          } else {
+            data = await redbus!.fetch(src.id, dst.id, route.date, route.windows);
+          }
           const checkedAt = new Date().toISOString().slice(0, 19);
           const prev = prices[key];
           if (data.min !== null) {
@@ -52,7 +65,7 @@ export async function runCheck(announce = false): Promise<CheckResult> {
       }
       savePrices(prices);
     } finally {
-      await scraper.stop();
+      await redbus?.stop();
     }
 
     if (announce && results.length > 0) {

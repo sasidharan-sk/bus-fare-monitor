@@ -25,5 +25,15 @@
     "windows": [
       "0-6"
     ]
+  },
+  {
+    "id": 4,
+    "source": "Bangalore",
+    "destination": "Salem",
+    "date": "2026-10-05",
+    "windows": [
+      "18-24"
+    ],
+    "site": "cleartrip"
   }
 ]

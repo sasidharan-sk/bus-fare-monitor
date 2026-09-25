@@ -18,6 +18,7 @@ import {
   NO_ROUTES,
   ONLINE,
   PICK_FROM,
+  PICK_SITE,
   SAME_CITY,
   addedText,
   badDateText,
@@ -33,6 +34,7 @@ import {
 } from "./messages.js";
 import { addRoute, loadRoutes, removeRoute } from "./store.js";
 import { runCheck } from "./monitor.js";
+import type { Site } from "./types.js";
 
 type BotContext = ConversationFlavor<Context>;
 
@@ -41,6 +43,13 @@ const HTML = { parse_mode: "HTML" as const };
 const bot = new Bot<BotContext>(TELEGRAM_BOT_TOKEN);
 
 bot.use(conversations());
+
+const siteKeyboard = () =>
+  new InlineKeyboard()
+    .text("RedBus", "site:redbus")
+    .text("ClearTrip", "site:cleartrip")
+    .row()
+    .text("Cancel", "cancel");
 
 const cityKeyboard = (side: "F" | "T", exclude?: string) =>
   new InlineKeyboard(
@@ -133,8 +142,16 @@ async function edit(chatId: number, messageId: number, text: string, keyboard?: 
 async function addRouteFlow(conv: Conversation<BotContext>, ctx: Context): Promise<void> {
   const today = new Date().toISOString().slice(0, 10);
 
-  await ctx.reply(PICK_FROM, { ...HTML, reply_markup: cityKeyboard("F") });
+  await ctx.reply(PICK_SITE, { ...HTML, reply_markup: siteKeyboard() });
   let pick = await waitForCallback(conv);
+  if (pick.data === "cancel") {
+    await edit(pick.chatId, pick.messageId, CANCELLED);
+    return;
+  }
+  const site = pick.data.split(":")[1] as Site;
+
+  await edit(pick.chatId, pick.messageId, PICK_FROM, cityKeyboard("F"));
+  pick = await waitForCallback(conv);
   if (pick.data === "cancel") {
     await edit(pick.chatId, pick.messageId, CANCELLED);
     return;
@@ -150,7 +167,7 @@ async function addRouteFlow(conv: Conversation<BotContext>, ctx: Context): Promi
   const to = pick.data.split(":")[2];
 
   let [year, month] = [Number(today.slice(0, 4)), Number(today.slice(5, 7))];
-  await edit(pick.chatId, pick.messageId, pickDate(from, to), monthKeyboard(year, month, today));
+  await edit(pick.chatId, pick.messageId, pickDate(from, to, site), monthKeyboard(year, month, today));
   let date = "";
   while (!date) {
     const cb = await waitForCallback(conv);
@@ -160,7 +177,7 @@ async function addRouteFlow(conv: Conversation<BotContext>, ctx: Context): Promi
     }
     if (cb.data.startsWith("cal:M:")) {
       [year, month] = nextMonth(year, month, Number(cb.data.split(":")[2]));
-      await edit(cb.chatId, cb.messageId, pickDate(from, to), monthKeyboard(year, month, today));
+      await edit(cb.chatId, cb.messageId, pickDate(from, to, site), monthKeyboard(year, month, today));
     } else if (cb.data.startsWith("cal:D:")) {
       date = cb.data.split(":")[2];
       pick = cb;
@@ -168,7 +185,7 @@ async function addRouteFlow(conv: Conversation<BotContext>, ctx: Context): Promi
   }
 
   const windows = new Set<string>();
-  await edit(pick.chatId, pick.messageId, pickTime(from, to, date), timeKeyboard(windows));
+  await edit(pick.chatId, pick.messageId, pickTime(from, to, date, site), timeKeyboard(windows));
   let done = false;
   while (!done) {
     const cb = await waitForCallback(conv);
@@ -180,14 +197,14 @@ async function addRouteFlow(conv: Conversation<BotContext>, ctx: Context): Promi
       const key = cb.data.split(":")[2];
       if (windows.has(key)) windows.delete(key);
       else windows.add(key);
-      await edit(cb.chatId, cb.messageId, pickTime(from, to, date), timeKeyboard(windows));
+      await edit(cb.chatId, cb.messageId, pickTime(from, to, date, site), timeKeyboard(windows));
     } else if (cb.data === "time:done") {
       done = true;
       pick = cb;
     }
   }
 
-  const route = addRoute(from, to, date, [...windows]);
+  const route = addRoute(from, to, date, [...windows], site);
   await edit(
     pick.chatId,
     pick.messageId,
@@ -209,6 +226,17 @@ bot.command("add", async (ctx) => {
   const args = ctx.match.trim();
   if (args) {
     const parts = args.split(/\s+/);
+    const siteAliases: Record<string, Site> = {
+      ct: "cleartrip",
+      cleartrip: "cleartrip",
+      rb: "redbus",
+      redbus: "redbus",
+    };
+    let site: Site = "redbus";
+    if (parts.length === 4 && siteAliases[parts[0].toLowerCase()]) {
+      site = siteAliases[parts[0].toLowerCase()];
+      parts.shift();
+    }
     if (parts.length !== 3) {
       await ctx.reply(ADD_USAGE, HTML);
       return;
@@ -228,7 +256,7 @@ bot.command("add", async (ctx) => {
       await ctx.reply(SAME_CITY, HTML);
       return;
     }
-    const route = addRoute(src.name, dst.name, date, []);
+    const route = addRoute(src.name, dst.name, date, [], site);
     await ctx.reply(addedText(route), HTML);
     return;
   }
