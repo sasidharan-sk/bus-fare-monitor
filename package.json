@@ -1,0 +1,23 @@
+{
+  "name": "bus-fare-monitor",
+  "version": "1.0.0",
+  "description": "Telegram bot that alerts when bus fares drop (RedBus)",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/bot.js",
+    "dev": "tsx src/bot.ts",
+    "check": "tsx src/runCheck.ts"
+  },
+  "dependencies": {
+    "@grammyjs/conversations": "^2.1.1",
+    "dotenv": "^18.0.3",
+    "grammy": "^1.30.0",
+    "playwright": "^1.49.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}
