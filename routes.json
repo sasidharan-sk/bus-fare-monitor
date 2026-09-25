@@ -7,5 +7,23 @@
     "windows": [
       "18-24"
     ]
+  },
+  {
+    "id": 2,
+    "source": "Salem",
+    "destination": "Bangalore",
+    "date": "2026-09-27",
+    "windows": [
+      "18-24"
+    ]
+  },
+  {
+    "id": 3,
+    "source": "Salem",
+    "destination": "Bangalore",
+    "date": "2026-09-28",
+    "windows": [
+      "0-6"
+    ]
   }
 ]
