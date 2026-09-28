@@ -1,3 +1,10 @@
 {
-  "erode|bangalore": { "fromId": 24659, "toId": 8902 }
+  "erode|bangalore": {
+    "fromId": 24659,
+    "toId": 8902
+  },
+  "salem|bangalore": {
+    "fromId": 17904,
+    "toId": 8902
+  }
 }
