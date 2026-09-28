@@ -1,6 +1,6 @@
 import { CITY_NAMES, WINDOW_LABELS } from "./config.js";
 import type { Route } from "./store.js";
-import type { RouteResult, ScrapedResult, Site } from "./types.js";
+import type { RouteResult, ScrapedResult, Site, SiteChoice } from "./types.js";
 
 export const esc = (s: string): string =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -23,7 +23,11 @@ export function fmtWindows(route: Route): string {
 
 export const SITE_LABELS: Record<Site, string> = { redbus: "RedBus", cleartrip: "ClearTrip" };
 
-const siteTag = (site?: Site): string => (site === undefined ? "" : ` · ${SITE_LABELS[site]}`);
+export const siteChoiceLabel = (site?: SiteChoice): string =>
+  site === "both" ? "RedBus + ClearTrip" : SITE_LABELS[site ?? "redbus"];
+
+const siteTag = (site?: SiteChoice): string =>
+  site === undefined ? "" : ` · ${siteChoiceLabel(site)}`;
 
 const siteTitle = (site: Site): string => `<b><u>${SITE_LABELS[site].toUpperCase()}</u></b>`;
 
@@ -36,7 +40,7 @@ const orderedGroups = <T>(items: T[], siteOf: (item: T) => Site): Array<[Site, T
   return groups;
 };
 
-const routeLine = (source: string, destination: string, date: string, site?: Site): string =>
+const routeLine = (source: string, destination: string, date: string, site?: SiteChoice): string =>
   `<b>${esc(source)} → ${esc(destination)}</b> · ${fmtDate(date)}${siteTag(site)}`;
 
 export const HELP = [
@@ -51,6 +55,7 @@ export const HELP = [
   "Or type directly:",
   "<code>/add bangalore salem 2026-10-05</code> (RedBus)",
   "<code>/add ct bangalore salem 2026-10-05</code> (ClearTrip)",
+  "<code>/add both bangalore salem 2026-10-05</code> (both providers)",
 ].join("\n");
 
 export const ONLINE = [
@@ -62,9 +67,9 @@ export const ONLINE = [
 export const PICK_SITE = "<b>New route</b>\nWhere should I check prices?";
 export const PICK_FROM = "<b>New route</b>\nWhere are you travelling from?";
 export const pickTo = (from: string): string => `From <b>${esc(from)}</b>\nWhere to?`;
-export const pickDate = (from: string, to: string, site?: Site): string =>
-  `<b>${esc(from)} → ${esc(to)}</b> · ${SITE_LABELS[site ?? "redbus"]}\nPick your travel date:`;
-export const pickTime = (from: string, to: string, date: string, site?: Site): string =>
+export const pickDate = (from: string, to: string, site?: SiteChoice): string =>
+  `<b>${esc(from)} → ${esc(to)}</b> · ${siteChoiceLabel(site)}\nPick your travel date:`;
+export const pickTime = (from: string, to: string, date: string, site?: SiteChoice): string =>
   `${routeLine(from, to, date, site)}\nPick departure time <i>(tap to toggle, pick several)</i>:`;
 export const CANCELLED = "Cancelled. Send <code>/add</code> to start again.";
 export const SESSION_EXPIRED = "Session expired. Send <code>/add</code> again.";
@@ -75,6 +80,16 @@ export function addedText(route: Route): string {
     routeLine(route.source, route.destination, route.date, route.site),
     `Time: <i>${esc(fmtWindows(route))}</i>`,
   ].join("\n");
+}
+
+export function addedTexts(routes: Route[]): string {
+  if (routes.length === 1) return addedText(routes[0]);
+  const lines = [`<b>Now watching ${routes.length} watches</b>`];
+  for (const r of routes) {
+    lines.push(`<b>#${r.id}</b>  ${routeLine(r.source, r.destination, r.date, r.site)}`);
+    lines.push(`     <i>${esc(fmtWindows(r))}</i>`);
+  }
+  return lines.join("\n");
 }
 
 export function listText(routes: Route[]): string {
@@ -103,7 +118,8 @@ export const unknownCityText = (city: string): string =>
   `Unknown city <b>${esc(city)}</b>. Known: ${CITY_NAMES.map(esc).join(", ")}`;
 export const ADD_USAGE =
   "Usage: <code>/add &lt;from&gt; &lt;to&gt; &lt;YYYY-MM-DD&gt;</code>" +
-  " (add <code>ct</code> first for ClearTrip, e.g. <code>/add ct bangalore salem 2026-10-05</code>)" +
+  " — prefix <code>ct</code> for ClearTrip or <code>both</code> for both providers," +
+  " e.g. <code>/add both bangalore salem 2026-10-05</code>" +
   " — or just <code>/add</code> to use the pickers.";
 export const badDateText =
   "Date must be <code>YYYY-MM-DD</code> and in the future, e.g. <code>2026-10-05</code>";

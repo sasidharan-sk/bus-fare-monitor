@@ -1,6 +1,7 @@
 import type { Route } from "./store.js";
 
 export type Site = "redbus" | "cleartrip";
+export type SiteChoice = Site | "both";
 
 export interface Bus {
   operator: string;

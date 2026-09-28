@@ -22,7 +22,7 @@ import {
   PICK_SITE,
   SAME_CITY,
   SITE_LABELS,
-  addedText,
+  addedTexts,
   badDateText,
   errorText,
   listText,
@@ -38,7 +38,7 @@ import {
 } from "./messages.js";
 import { addRoute, loadRoutes, removeRoute } from "./store.js";
 import { runCheck } from "./monitor.js";
-import type { Site } from "./types.js";
+import type { Site, SiteChoice } from "./types.js";
 
 type BotContext = ConversationFlavor<Context>;
 
@@ -89,6 +89,7 @@ const siteKeyboard = () =>
     .text("RedBus", "site:redbus")
     .text("ClearTrip", "site:cleartrip")
     .row()
+    .text("Both", "site:both")
     .text("Cancel", "cancel");
 
 const cityKeyboard = (side: "F" | "T", exclude?: string) =>
@@ -188,7 +189,7 @@ async function addRouteFlow(conv: Conversation<BotContext>, ctx: Context): Promi
     await edit(pick.chatId, pick.messageId, CANCELLED);
     return;
   }
-  const site = pick.data.split(":")[1] as Site;
+  const site = pick.data.split(":")[1] as SiteChoice;
 
   await edit(pick.chatId, pick.messageId, PICK_FROM, cityKeyboard("F"));
   pick = await waitForCallback(conv);
@@ -244,14 +245,15 @@ async function addRouteFlow(conv: Conversation<BotContext>, ctx: Context): Promi
     }
   }
 
-    const route = addRoute(from, to, date, [...windows], site);
+    const sites: Site[] = site === "both" ? ["redbus", "cleartrip"] : [site];
+    const routes = sites.map((s) => addRoute(from, to, date, [...windows], s));
     syncRoutes();
     await edit(
-    pick.chatId,
-    pick.messageId,
-    addedText(route),
-    new InlineKeyboard().text("View routes", "show:list"),
-  );
+      pick.chatId,
+      pick.messageId,
+      addedTexts(routes),
+      new InlineKeyboard().text("View routes", "show:list"),
+    );
 }
 
 bot.use(createConversation(addRouteFlow, "addRoute"));
@@ -267,13 +269,15 @@ bot.command("add", async (ctx) => {
   const args = ctx.match.trim();
   if (args) {
     const parts = args.split(/\s+/);
-    const siteAliases: Record<string, Site> = {
+    const siteAliases: Record<string, SiteChoice> = {
       ct: "cleartrip",
       cleartrip: "cleartrip",
       rb: "redbus",
       redbus: "redbus",
+      both: "both",
+      all: "both",
     };
-    let site: Site = "redbus";
+    let site: SiteChoice = "redbus";
     if (parts.length === 4 && siteAliases[parts[0].toLowerCase()]) {
       site = siteAliases[parts[0].toLowerCase()];
       parts.shift();
@@ -297,9 +301,10 @@ bot.command("add", async (ctx) => {
       await ctx.reply(SAME_CITY, HTML);
       return;
     }
-    const route = addRoute(src.name, dst.name, date, [], site);
+    const sites: Site[] = site === "both" ? ["redbus", "cleartrip"] : [site];
+    const routes = sites.map((s) => addRoute(src.name, dst.name, date, [], s));
     syncRoutes();
-    await ctx.reply(addedText(route), HTML);
+    await ctx.reply(addedTexts(routes), HTML);
     return;
   }
   await ctx.conversation.enter("addRoute");
