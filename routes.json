@@ -1,14 +1,5 @@
 [
   {
-    "id": 1,
-    "source": "Bangalore",
-    "destination": "Salem",
-    "date": "2026-10-05",
-    "windows": [
-      "18-24"
-    ]
-  },
-  {
     "id": 2,
     "source": "Salem",
     "destination": "Bangalore",
