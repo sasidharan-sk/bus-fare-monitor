@@ -68,7 +68,7 @@ export async function runCheck(announce = false): Promise<CheckResult> {
       await redbus?.stop();
     }
 
-    if (announce && results.length > 0) {
+    if (announce && (results.length > 0 || errors.length > 0)) {
       await send(summaryText(results, errors));
     }
     return { status: "ok", results, errors };

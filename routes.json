@@ -35,5 +35,15 @@
       "18-24"
     ],
     "site": "cleartrip"
+  },
+  {
+    "id": 5,
+    "source": "Salem",
+    "destination": "Bangalore",
+    "date": "2026-09-27",
+    "windows": [
+      "18-24"
+    ],
+    "site": "cleartrip"
   }
 ]

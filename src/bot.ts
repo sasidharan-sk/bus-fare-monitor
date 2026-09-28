@@ -1,6 +1,7 @@
 import { Bot, Context, InlineKeyboard } from "grammy";
 import type { InlineKeyboardButton } from "grammy/types";
 import { conversations, createConversation, type Conversation, type ConversationFlavor } from "@grammyjs/conversations";
+import { exec } from "node:child_process";
 import {
   CHECK_INTERVAL_HOURS,
   CITY_NAMES,
@@ -39,6 +40,12 @@ import type { Site } from "./types.js";
 type BotContext = ConversationFlavor<Context>;
 
 const HTML = { parse_mode: "HTML" as const };
+
+const syncRoutes = (): void => {
+  exec('git add routes.json && git commit -m "Update watched routes" && git push', (err, _out, stderr) => {
+    if (err) console.error("routes sync failed:", stderr || err.message);
+  });
+};
 
 const bot = new Bot<BotContext>(TELEGRAM_BOT_TOKEN);
 
@@ -204,8 +211,9 @@ async function addRouteFlow(conv: Conversation<BotContext>, ctx: Context): Promi
     }
   }
 
-  const route = addRoute(from, to, date, [...windows], site);
-  await edit(
+    const route = addRoute(from, to, date, [...windows], site);
+    syncRoutes();
+    await edit(
     pick.chatId,
     pick.messageId,
     addedText(route),
@@ -257,6 +265,7 @@ bot.command("add", async (ctx) => {
       return;
     }
     const route = addRoute(src.name, dst.name, date, [], site);
+    syncRoutes();
     await ctx.reply(addedText(route), HTML);
     return;
   }
@@ -269,7 +278,9 @@ bot.command("remove", (ctx) => {
   const arg = ctx.match.trim().replace(/^#/, "");
   if (!/^\d+$/.test(arg)) return ctx.reply(ADD_USAGE, HTML);
   const id = Number(arg);
-  return ctx.reply(removeRoute(id) ? removedText(id) : notFoundText(id), HTML);
+  const removed = removeRoute(id);
+  if (removed) syncRoutes();
+  return ctx.reply(removed ? removedText(id) : notFoundText(id), HTML);
 });
 
 bot.command("check", async (ctx) => {
@@ -297,7 +308,8 @@ async function main(): Promise<void> {
     { command: "check", description: "Check prices right now" },
     { command: "help", description: "Show usage" },
   ]);
-  await send(ONLINE);
+  if (process.env.ANNOUNCE_ONLINE !== "0") await send(ONLINE);
+  runCheck(true).catch((exc) => console.error("initial check failed:", exc));
   setInterval(() => {
     runCheck(true).catch((exc) => send(errorText(exc)).catch(() => undefined));
   }, CHECK_INTERVAL_HOURS * 3600_000);
