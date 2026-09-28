@@ -1,1 +1,10 @@
-{}
+{
+  "redbus:Erode|Bangalore|2026-10-19|18-24|bp:Erode Bus Stand|dp:Madiwala": {
+    "min": 514,
+    "checked_at": "2026-09-28T13:34:52"
+  },
+  "cleartrip:Erode|Bangalore|2026-10-19|18-24|bp:Erode Bus Stand|dp:Madiwala": {
+    "min": 360,
+    "checked_at": "2026-09-28T13:34:54"
+  }
+}
