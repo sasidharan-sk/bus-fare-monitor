@@ -44,7 +44,7 @@ export const HELP = [
   "",
   "<code>/add</code> — watch a new route (site, city, date & time pickers)",
   "<code>/list</code> — show watched routes",
-  "<code>/remove &lt;id&gt;</code> — stop watching a route",
+  "<code>/remove</code> — stop watching (multi-select picker)",
   "<code>/check</code> — check prices now",
   "<code>/help</code> — this message",
   "",
@@ -92,6 +92,9 @@ export function listText(routes: Route[]): string {
 
 export const removedText = (id: number): string => `Removed <b>#${id}</b>.`;
 export const notFoundText = (id: number): string => `No route with id <b>#${id}</b>.`;
+export const removePickText = (note?: string): string =>
+  [note ? `${note}\n` : "", "<b>Remove routes</b>", "Tap to select, then <b>Remove selected</b>:"].join("\n");
+export const removeDoneText = "Done. Send <code>/list</code> to review your routes.";
 export const NO_ROUTES = "No routes to check. Add one first with <code>/add</code>.";
 export const CHECKING = "Checking prices…";
 export const UNAUTHORIZED = "Unauthorized chat.";

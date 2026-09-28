@@ -21,6 +21,7 @@ import {
   PICK_FROM,
   PICK_SITE,
   SAME_CITY,
+  SITE_LABELS,
   addedText,
   badDateText,
   errorText,
@@ -29,6 +30,8 @@ import {
   pickDate,
   pickTime,
   pickTo,
+  removeDoneText,
+  removePickText,
   removedText,
   summaryText,
   unknownCityText,
@@ -41,10 +44,40 @@ type BotContext = ConversationFlavor<Context>;
 
 const HTML = { parse_mode: "HTML" as const };
 
+let syncTimer: NodeJS.Timeout | undefined;
+let syncChain: Promise<void> = Promise.resolve();
+
 const syncRoutes = (): void => {
-  exec('git add routes.json && git commit -m "Update watched routes" && git push', (err, _out, stderr) => {
-    if (err) console.error("routes sync failed:", stderr || err.message);
-  });
+  if (syncTimer) clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => {
+    syncChain = syncChain.then(
+      () =>
+        new Promise<void>((resolve) => {
+          exec(
+            "git pull --rebase --autostash && git add routes.json " +
+              '&& git commit -m "Update watched routes" && git push',
+            (err, _out, stderr) => {
+              if (err) console.error("routes sync failed:", stderr || err.message);
+              resolve();
+            },
+          );
+        }),
+    );
+  }, 3000);
+};
+
+let removeSelection = new Set<number>();
+
+const removeKeyboard = () => {
+  const rows: InlineKeyboardButton[][] = loadRoutes().map((r) => [
+    {
+      text: `${removeSelection.has(r.id) ? "✓ " : ""}#${r.id} ${r.source} → ${r.destination} · ${SITE_LABELS[r.site ?? "redbus"]}`,
+      callback_data: `sel:${r.id}`,
+    },
+  ]);
+  rows.push([{ text: `Remove selected (${removeSelection.size})`, callback_data: "selgo" }]);
+  rows.push([{ text: "Done", callback_data: "selcancel" }]);
+  return new InlineKeyboard(rows);
 };
 
 const bot = new Bot<BotContext>(TELEGRAM_BOT_TOKEN);
@@ -274,13 +307,54 @@ bot.command("add", async (ctx) => {
 
 bot.command("list", (ctx) => ctx.reply(listText(loadRoutes()), HTML));
 
-bot.command("remove", (ctx) => {
+bot.command("remove", async (ctx) => {
   const arg = ctx.match.trim().replace(/^#/, "");
-  if (!/^\d+$/.test(arg)) return ctx.reply(ADD_USAGE, HTML);
-  const id = Number(arg);
-  const removed = removeRoute(id);
-  if (removed) syncRoutes();
-  return ctx.reply(removed ? removedText(id) : notFoundText(id), HTML);
+  if (/^\d+$/.test(arg)) {
+    const id = Number(arg);
+    const removed = removeRoute(id);
+    if (removed) syncRoutes();
+    return ctx.reply(removed ? removedText(id) : notFoundText(id), HTML);
+  }
+  if (loadRoutes().length === 0) return ctx.reply(NO_ROUTES, HTML);
+  removeSelection = new Set();
+  await ctx.reply(removePickText(), { ...HTML, reply_markup: removeKeyboard() });
+});
+
+bot.callbackQuery(/^sel:\d+$/, async (ctx) => {
+  await ctx.answerCallbackQuery();
+  const id = Number(ctx.match[0].split(":")[1]);
+  if (removeSelection.has(id)) removeSelection.delete(id);
+  else removeSelection.add(id);
+  await ctx
+    .editMessageText(removePickText(), { ...HTML, reply_markup: removeKeyboard() })
+    .catch(() => undefined);
+});
+
+bot.callbackQuery("selgo", async (ctx) => {
+  const ids = [...removeSelection].sort((a, b) => a - b);
+  if (ids.length === 0) {
+    await ctx.answerCallbackQuery({ text: "Select at least one route" });
+    return;
+  }
+  await ctx.answerCallbackQuery();
+  for (const id of ids) removeRoute(id);
+  removeSelection.clear();
+  syncRoutes();
+  const note = `Removed ${ids.map((i) => `<b>#${i}</b>`).join(", ")}.`;
+  const routes = loadRoutes();
+  if (routes.length === 0) {
+    await ctx.editMessageText(`${note}\n\n${removeDoneText}`, HTML).catch(() => undefined);
+    return;
+  }
+  await ctx
+    .editMessageText(removePickText(note), { ...HTML, reply_markup: removeKeyboard() })
+    .catch(() => undefined);
+});
+
+bot.callbackQuery("selcancel", async (ctx) => {
+  await ctx.answerCallbackQuery();
+  removeSelection.clear();
+  await ctx.editMessageText(removeDoneText, HTML).catch(() => undefined);
 });
 
 bot.command("check", async (ctx) => {
