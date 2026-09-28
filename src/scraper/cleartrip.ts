@@ -9,6 +9,43 @@ const LAUNCH_ARGS = ["--disable-blink-features=AutomationControlled"];
 
 const BLOCK_RE = /just a moment|attention required|you have been blocked|cf-chl/i;
 
+const BROWSER_HEADERS: Record<string, string> = {
+  "user-agent": UA,
+  accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+  "accept-language": "en-US,en;q=0.9",
+  "sec-ch-ua": '"Chromium";v="153", "Not(A:Brand";v="24", "Google Chrome";v="153"',
+  "sec-ch-ua-mobile": "?0",
+  "sec-ch-ua-platform": '"Windows"',
+  "sec-fetch-dest": "document",
+  "sec-fetch-mode": "navigate",
+  "sec-fetch-site": "none",
+  "sec-fetch-user": "?1",
+  "upgrade-insecure-requests": "1",
+};
+
+const viaTranslate = (url: string): string => {
+  const u = new URL(url);
+  const params = u.searchParams.toString();
+  const qs = params ? `${params}&` : "";
+  return `https://${u.hostname.replace(/\./g, "-")}.translate.goog${u.pathname}` +
+    `${qs}_x_tr_sl=auto&_x_tr_tl=en&_x_tr_hl=en`;
+};
+
+async function tryFetch(
+  url: string,
+): Promise<{ ok: true; text: string } | { ok: false; status: string }> {
+  try {
+    const res = await fetch(url, {
+      headers: BROWSER_HEADERS,
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (!res.ok) return { ok: false, status: String(res.status) };
+    return { ok: true, text: await res.text() };
+  } catch (exc) {
+    return { ok: false, status: (exc as Error).message.slice(0, 60) };
+  }
+}
+
 const slug = (city: string): string =>
   city.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
@@ -114,17 +151,32 @@ export class CleartripScraper {
   }
 
   private async get(url: string): Promise<string> {
-    await this.ensure();
-    const res = await this.page!.goto(url, { timeout: 60_000, waitUntil: "domcontentloaded" });
-    let html = await this.page!.content();
-    if (BLOCK_RE.test(html)) {
-      await this.page!.waitForTimeout(8_000);
-      html = await this.page!.content();
+    const attempts: string[] = [];
+
+    const direct = await tryFetch(url);
+    if (direct.ok) return direct.text;
+    attempts.push(`direct ${direct.status}`);
+
+    const relay = await tryFetch(viaTranslate(url));
+    if (relay.ok) return relay.text;
+    attempts.push(`relay ${relay.status}`);
+
+    try {
+      await this.ensure();
+      const res = await this.page!.goto(url, { timeout: 60_000, waitUntil: "domcontentloaded" });
+      let html = await this.page!.content();
+      if (BLOCK_RE.test(html)) {
+        await this.page!.waitForTimeout(8_000);
+        html = await this.page!.content();
+      }
+      const status = res?.status() ?? 0;
+      if (BLOCK_RE.test(html)) throw new Error(`blocked (${status || 403})`);
+      if (status >= 400) throw new Error(`HTTP ${status}`);
+      return html;
+    } catch (exc) {
+      attempts.push(`browser ${(exc as Error).message}`);
     }
-    const status = res?.status() ?? 0;
-    if (BLOCK_RE.test(html)) throw new Error(`ClearTrip HTTP ${status || 403} (blocked)`);
-    if (status >= 400) throw new Error(`ClearTrip HTTP ${status}`);
-    return html;
+    throw new Error(`ClearTrip failed: ${attempts.join("; ")}`);
   }
 
   private async resolveIds(from: string, to: string): Promise<{ fromId: number; toId: number }> {
