@@ -5,6 +5,7 @@ export const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID ?? "";
 export const CHECK_INTERVAL_HOURS = Number(process.env.CHECK_INTERVAL_HOURS ?? 2);
 export const PRICE_DROP_THRESHOLD = Number(process.env.PRICE_DROP_THRESHOLD ?? 50);
 export const FAIL_ALERT_AFTER = Number(process.env.FAIL_ALERT_AFTER ?? 3);
+export const OWN_PROXY_URL = (process.env.OWN_PROXY_URL ?? "").trim();
 
 export interface City {
   name: string;

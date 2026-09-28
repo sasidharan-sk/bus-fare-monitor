@@ -1,5 +1,6 @@
 import { chromium, type Browser, type Page } from "playwright";
 import { readFileSync, writeFileSync } from "node:fs";
+import { OWN_PROXY_URL } from "../config.js";
 import type { Bus, ScrapedResult } from "../types.js";
 import { pointMatches } from "./match.js";
 import { dumpPayload } from "./dump.js";
@@ -36,6 +37,9 @@ const viaTranslate = (url: string): string => {
 
 const viaReef = (url: string): string =>
   `https://reef-proxy.onrender.com/get?url=${encodeURIComponent(url)}`;
+
+const viaOwn = (url: string): string =>
+  `${OWN_PROXY_URL.replace(/\/$/, "")}/?url=${encodeURIComponent(url)}`;
 
 async function tryFetch(
   url: string,
@@ -197,6 +201,12 @@ export class CleartripScraper {
     const direct = await tryFetch(url);
     if (direct.ok) return direct.text;
     attempts.push(`direct ${direct.status}`);
+
+    if (OWN_PROXY_URL) {
+      const own = await tryFetch(viaOwn(url));
+      if (own.ok) return own.text;
+      attempts.push(`own ${own.status}`);
+    }
 
     let reef = await tryFetch(viaReef(url));
     if (!reef.ok && reef.status === "429") {
