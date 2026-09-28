@@ -1,8 +1,13 @@
+import { chromium, type Browser, type Page } from "playwright";
 import type { Bus, ScrapedResult } from "../types.js";
 
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
   "(KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36";
+
+const LAUNCH_ARGS = ["--disable-blink-features=AutomationControlled"];
+
+const BLOCK_RE = /just a moment|attention required|you have been blocked|cf-chl/i;
 
 const slug = (city: string): string =>
   city.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -14,29 +19,7 @@ const RESULTS_URL = (fromId: number, toId: number, from: string, to: string, dat
   `https://www.cleartrip.com/bus/results?fromCity=${fromId}&toCity=${toId}` +
   `&journeyDate=${date}&fromCityName=${encodeURIComponent(from)}&toCityName=${encodeURIComponent(to)}`;
 
-async function get(url: string): Promise<string> {
-  const res = await fetch(url, {
-    headers: { "user-agent": UA, "accept-language": "en-US,en;q=0.9" },
-    signal: AbortSignal.timeout(45_000),
-  });
-  if (!res.ok) throw new Error(`ClearTrip HTTP ${res.status}`);
-  return res.text();
-}
-
 const idCache = new Map<string, { fromId: number; toId: number }>();
-
-async function resolveIds(from: string, to: string): Promise<{ fromId: number; toId: number }> {
-  const key = `${slug(from)}|${slug(to)}`;
-  const hit = idCache.get(key);
-  if (hit) return hit;
-  const html = await get(SEO_URL(from, to));
-  const fromId = html.match(/\\"fromCityId\\":(\d+)/);
-  const toId = html.match(/\\"toCityId\\":(\d+)/);
-  if (!fromId || !toId) throw new Error(`ClearTrip: route ${from} → ${to} not found`);
-  const ids = { fromId: Number(fromId[1]), toId: Number(toId[1]) };
-  idCache.set(key, ids);
-  return ids;
-}
 
 interface RawBus {
   deptTime?: string;
@@ -116,9 +99,57 @@ export function parseResult(html: string, windows: string[]): ScrapedResult {
 }
 
 export class CleartripScraper {
+  private browser?: Browser;
+  private page?: Page;
+  private ready?: Promise<void>;
+
+  private ensure(): Promise<void> {
+    if (!this.ready) {
+      this.ready = (async () => {
+        this.browser = await chromium.launch({ channel: "chrome", headless: true, args: LAUNCH_ARGS });
+        this.page = await this.browser.newPage({ userAgent: UA });
+      })();
+    }
+    return this.ready;
+  }
+
+  private async get(url: string): Promise<string> {
+    await this.ensure();
+    const res = await this.page!.goto(url, { timeout: 60_000, waitUntil: "domcontentloaded" });
+    let html = await this.page!.content();
+    if (BLOCK_RE.test(html)) {
+      await this.page!.waitForTimeout(8_000);
+      html = await this.page!.content();
+    }
+    const status = res?.status() ?? 0;
+    if (BLOCK_RE.test(html)) throw new Error(`ClearTrip HTTP ${status || 403} (blocked)`);
+    if (status >= 400) throw new Error(`ClearTrip HTTP ${status}`);
+    return html;
+  }
+
+  private async resolveIds(from: string, to: string): Promise<{ fromId: number; toId: number }> {
+    const key = `${slug(from)}|${slug(to)}`;
+    const hit = idCache.get(key);
+    if (hit) return hit;
+    const html = await this.get(SEO_URL(from, to));
+    const fromId = html.match(/\\"fromCityId\\":(\d+)/);
+    const toId = html.match(/\\"toCityId\\":(\d+)/);
+    if (!fromId || !toId) throw new Error(`ClearTrip: route ${from} → ${to} not found`);
+    const ids = { fromId: Number(fromId[1]), toId: Number(toId[1]) };
+    idCache.set(key, ids);
+    return ids;
+  }
+
   async fetch(from: string, to: string, date: string, windows: string[] = []): Promise<ScrapedResult> {
-    const { fromId, toId } = await resolveIds(from, to);
-    const html = await get(RESULTS_URL(fromId, toId, from, to, date));
+    const { fromId, toId } = await this.resolveIds(from, to);
+    const html = await this.get(RESULTS_URL(fromId, toId, from, to, date));
     return parseResult(html, windows);
+  }
+
+  async stop(): Promise<void> {
+    await this.browser?.close();
+    this.browser = undefined;
+    this.page = undefined;
+    this.ready = undefined;
   }
 }

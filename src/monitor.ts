@@ -27,8 +27,7 @@ export async function runCheck(announce = false): Promise<CheckResult> {
     const cleartrip = needsCleartrip ? new CleartripScraper() : null;
 
     try {
-      if (redbus) await redbus.start();
-      for (const route of routes) {
+      if (redbus) await redbus.start();      for (const route of routes) {
         const src = resolveCity(route.source);
         const dst = resolveCity(route.destination);
         if (!src || !dst) {
@@ -66,6 +65,7 @@ export async function runCheck(announce = false): Promise<CheckResult> {
       savePrices(prices);
     } finally {
       await redbus?.stop();
+      await cleartrip?.stop();
     }
 
     if (announce && (results.length > 0 || errors.length > 0)) {
