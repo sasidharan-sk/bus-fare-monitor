@@ -387,7 +387,7 @@ async function main(): Promise<void> {
   setInterval(() => {
     runCheck(true).catch((exc) => send(errorText(exc)).catch(() => undefined));
   }, CHECK_INTERVAL_HOURS * 3600_000);
-  bot.start({ drop_pending_updates: true });
+  bot.start({ drop_pending_updates: false });
 }
 
 main().catch((exc) => {
