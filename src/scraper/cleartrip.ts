@@ -31,6 +31,9 @@ const viaTranslate = (url: string): string => {
     `${qs}_x_tr_sl=auto&_x_tr_tl=en&_x_tr_hl=en`;
 };
 
+const viaReef = (url: string): string =>
+  `https://reef-proxy.onrender.com/get?url=${encodeURIComponent(url)}`;
+
 async function tryFetch(
   url: string,
 ): Promise<{ ok: true; text: string } | { ok: false; status: string }> {
@@ -156,6 +159,10 @@ export class CleartripScraper {
     const direct = await tryFetch(url);
     if (direct.ok) return direct.text;
     attempts.push(`direct ${direct.status}`);
+
+    const reef = await tryFetch(viaReef(url));
+    if (reef.ok) return reef.text;
+    attempts.push(`reef ${reef.status}`);
 
     const relay = await tryFetch(viaTranslate(url));
     if (relay.ok) return relay.text;
