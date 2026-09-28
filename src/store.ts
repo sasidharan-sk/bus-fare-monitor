@@ -9,6 +9,8 @@ export interface Route {
   date: string;
   windows: string[];
   site?: Site;
+  pickups?: string[];
+  dropoffs?: string[];
 }
 
 export interface PriceRecord {
@@ -37,16 +39,25 @@ export function saveRoutes(routes: Route[]): void {
   writeJson(ROUTES_FILE, routes);
 }
 
+const sortedPoints = (points: string[]): string[] =>
+  points.map((p) => p.trim()).filter(Boolean).sort((a, b) => a.localeCompare(b));
+
 export function addRoute(
   source: string,
   destination: string,
   date: string,
   windows: string[],
   site: Site = "redbus",
+  pickups: string[] = [],
+  dropoffs: string[] = [],
 ): Route {
   const routes = loadRoutes();
   const id = routes.reduce((max, r) => Math.max(max, r.id), 0) + 1;
   const route: Route = { id, source, destination, date, windows: [...windows].sort(), site };
+  const pu = sortedPoints(pickups);
+  const dp = sortedPoints(dropoffs);
+  if (pu.length > 0) route.pickups = pu;
+  if (dp.length > 0) route.dropoffs = dp;
   routes.push(route);
   saveRoutes(routes);
   return route;
@@ -66,10 +77,15 @@ export function routeKey(
   destination: string,
   date: string,
   windows: string[],
+  pickups: string[] = [],
+  dropoffs: string[] = [],
 ): string {
   const base = `${source}|${destination}|${date}`;
   const win = windows.length > 0 ? `|${[...windows].sort().join(",")}` : "";
-  return `${site}:${base}${win}`;
+  const pts =
+    (pickups.length > 0 ? `|bp:${[...pickups].sort().join(",")}` : "") +
+    (dropoffs.length > 0 ? `|dp:${[...dropoffs].sort().join(",")}` : "");
+  return `${site}:${base}${win}${pts}`;
 }
 
 export function loadPrices(): Record<string, PriceRecord> {

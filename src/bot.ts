@@ -16,6 +16,7 @@ import {
   CANCELLED,
   CHECKING,
   HELP,
+  LOADING_POINTS,
   NO_ROUTES,
   ONLINE,
   PICK_FROM,
@@ -28,6 +29,8 @@ import {
   listText,
   notFoundText,
   pickDate,
+  pickDropoff,
+  pickPickup,
   pickTime,
   pickTo,
   removeDoneText,
@@ -38,6 +41,7 @@ import {
 } from "./messages.js";
 import { addRoute, loadRoutes, removeRoute } from "./store.js";
 import { runCheck } from "./monitor.js";
+import { collectPoints } from "./points.js";
 import type { Site, SiteChoice } from "./types.js";
 
 type BotContext = ConversationFlavor<Context>;
@@ -148,6 +152,20 @@ const timeKeyboard = (selected: Set<string>) => {
   return new InlineKeyboard(rows);
 };
 
+const pointKeyboard = (selected: Set<number>, options: string[], kind: "p" | "d") =>
+  new InlineKeyboard(
+    options.map(
+      (name, i): InlineKeyboardButton[] => [
+        { text: `${selected.has(i) ? "✓ " : ""}${name}`, callback_data: `pts:${kind}:${i}` },
+      ],
+    ),
+  )
+    .row({
+      text: selected.size > 0 ? `Done (${selected.size})` : "Done (any point)",
+      callback_data: `pts:${kind}:done`,
+    })
+    .row({ text: "Cancel", callback_data: "cancel" });
+
 const nextMonth = (y: number, m: number, delta: number): [number, number] => {
   const nm = m + delta;
   if (nm < 1) return [y - 1, 12];
@@ -246,7 +264,42 @@ async function addRouteFlow(conv: Conversation<BotContext>, ctx: Context): Promi
   }
 
     const sites: Site[] = site === "both" ? ["redbus", "cleartrip"] : [site];
-    const routes = sites.map((s) => addRoute(from, to, date, [...windows], s));
+    await edit(pick.chatId, pick.messageId, LOADING_POINTS);
+    const pts = await collectPoints(site, from, to, date);
+
+    const pickSet = async (
+      title: string,
+      options: string[],
+      kind: "p" | "d",
+    ): Promise<string[] | null> => {
+      if (options.length === 0) return [];
+      const sel = new Set<number>();
+      await edit(pick.chatId, pick.messageId, title, pointKeyboard(sel, options, kind));
+      for (;;) {
+        const cb = await waitForCallback(conv);
+        if (cb.data === "cancel") {
+          await edit(cb.chatId, cb.messageId, CANCELLED);
+          return null;
+        }
+        pick = cb;
+        if (cb.data === `pts:${kind}:done`) {
+          return [...sel].sort((a, b) => a - b).map((i) => options[i]);
+        }
+        const idx = Number(cb.data.split(":")[2]);
+        if (Number.isInteger(idx) && idx >= 0 && idx < options.length) {
+          if (sel.has(idx)) sel.delete(idx);
+          else sel.add(idx);
+        }
+        await edit(cb.chatId, cb.messageId, title, pointKeyboard(sel, options, kind));
+      }
+    };
+
+    const pickups = await pickSet(pickPickup(from, to), pts.pickups, "p");
+    if (pickups === null) return;
+    const dropoffs = await pickSet(pickDropoff(from, to), pts.dropoffs, "d");
+    if (dropoffs === null) return;
+
+    const routes = sites.map((s) => addRoute(from, to, date, [...windows], s, pickups, dropoffs));
     syncRoutes();
     await edit(
       pick.chatId,

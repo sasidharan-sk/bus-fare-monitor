@@ -46,7 +46,7 @@ const routeLine = (source: string, destination: string, date: string, site?: Sit
 export const HELP = [
   "<b>Bus Fare Monitor</b>",
   "",
-  "<code>/add</code> — watch a new route (site, city, date & time pickers)",
+  "<code>/add</code> — watch a new route (site, city, date, time & pick-up/drop points)",
   "<code>/list</code> — show watched routes",
   "<code>/remove</code> — stop watching (multi-select picker)",
   "<code>/check</code> — check prices now",
@@ -73,12 +73,26 @@ export const pickTime = (from: string, to: string, date: string, site?: SiteChoi
   `${routeLine(from, to, date, site)}\nPick departure time <i>(tap to toggle, pick several)</i>:`;
 export const CANCELLED = "Cancelled. Send <code>/add</code> to start again.";
 export const SESSION_EXPIRED = "Session expired. Send <code>/add</code> again.";
+export const LOADING_POINTS = "Loading pick-up & drop points for this route…";
+export const pickPickup = (from: string, to: string): string =>
+  `<b>${esc(from)} → ${esc(to)}</b>\nSelect pick-up point(s) <i>(tap to toggle, Done = any point)</i>:`;
+export const pickDropoff = (from: string, to: string): string =>
+  `<b>${esc(from)} → ${esc(to)}</b>\nSelect drop point(s) <i>(tap to toggle, Done = any point)</i>:`;
+
+export function fmtPoints(route: Route): string {
+  const parts: string[] = [];
+  if (route.pickups?.length) parts.push(`Pickup: ${route.pickups.map(esc).join(", ")}`);
+  if (route.dropoffs?.length) parts.push(`Drop: ${route.dropoffs.map(esc).join(", ")}`);
+  return parts.join("\n");
+}
 
 export function addedText(route: Route): string {
+  const pts = fmtPoints(route);
   return [
     `<b>Now watching #${route.id}</b>`,
     routeLine(route.source, route.destination, route.date, route.site),
     `Time: <i>${esc(fmtWindows(route))}</i>`,
+    ...(pts ? [`<i>${pts}</i>`] : []),
   ].join("\n");
 }
 
@@ -88,6 +102,8 @@ export function addedTexts(routes: Route[]): string {
   for (const r of routes) {
     lines.push(`<b>#${r.id}</b>  ${routeLine(r.source, r.destination, r.date, r.site)}`);
     lines.push(`     <i>${esc(fmtWindows(r))}</i>`);
+    const pts = fmtPoints(r);
+    if (pts) lines.push(`     <i>${pts}</i>`);
   }
   return lines.join("\n");
 }
@@ -100,6 +116,8 @@ export function listText(routes: Route[]): string {
     for (const r of group) {
       lines.push(`<b>#${r.id}</b>  ${routeLine(r.source, r.destination, r.date)}`);
       lines.push(`     <i>${esc(fmtWindows(r))}</i>`);
+      const pts = fmtPoints(r);
+      if (pts) lines.push(`     <i>${pts}</i>`);
     }
   }
   return lines.join("\n");
@@ -156,7 +174,7 @@ export function summaryText(results: RouteResult[], errors: string[]): string {
       lines.push(routeLine(r.source, r.destination, r.route.date));
       lines.push(`<i>${esc(fmtWindows(r.route))}</i>`);
       if (r.data.min === null) {
-        lines.push("No buses in selected time window");
+        lines.push(r.data.note ?? "No buses in selected time window");
         continue;
       }
       let price = `Min: <b>${fmtRs(r.data.min)}</b>`;

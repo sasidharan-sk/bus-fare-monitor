@@ -1,5 +1,6 @@
 import { chromium, type Browser, type Page } from "playwright";
 import type { Bus, ScrapedResult } from "../types.js";
+import { pointMatches } from "./match.js";
 
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
@@ -65,6 +66,8 @@ interface RawBus {
   deptTime?: string;
   fares?: Array<{ total?: number }>;
   meta?: { operatorName?: string };
+  pickups?: string[];
+  dropOffs?: string[];
 }
 
 export function extractBuses(html: string): RawBus[] {
@@ -119,7 +122,12 @@ function inWindows(hour: number, windows: string[]): boolean {
   });
 }
 
-export function parseResult(html: string, windows: string[]): ScrapedResult {
+export function parseResult(
+  html: string,
+  windows: string[],
+  pickups: string[] = [],
+  dropoffs: string[] = [],
+): ScrapedResult {
   const buses: Bus[] = [];
   for (const raw of extractBuses(html)) {
     const fares = raw.fares ?? [];
@@ -129,10 +137,12 @@ export function parseResult(html: string, windows: string[]): ScrapedResult {
     const dep = raw.deptTime ?? "";
     const hour = departureHour(dep);
     if (windows.length > 0 && hour !== null && !inWindows(hour, windows)) continue;
+    if (!pointMatches(raw.pickups, pickups)) continue;
+    if (!pointMatches(raw.dropOffs, dropoffs)) continue;
     buses.push({ operator: raw.meta?.operatorName ?? "Unknown", departure: dep, price: Math.min(...prices) });
   }
   if (buses.length === 0) {
-    return { site: "cleartrip", min: null, count: 0, cheapest: [], note: "No buses in selected time window" };
+    return { site: "cleartrip", min: null, count: 0, cheapest: [], note: "No buses match your time window / point filters" };
   }
   buses.sort((a, b) => a.price - b.price);
   return { site: "cleartrip", min: buses[0].price, count: buses.length, cheapest: buses.slice(0, 3) };
@@ -199,10 +209,31 @@ export class CleartripScraper {
     return ids;
   }
 
-  async fetch(from: string, to: string, date: string, windows: string[] = []): Promise<ScrapedResult> {
+  async fetch(
+    from: string,
+    to: string,
+    date: string,
+    windows: string[] = [],
+    pickups: string[] = [],
+    dropoffs: string[] = [],
+  ): Promise<ScrapedResult> {
     const { fromId, toId } = await this.resolveIds(from, to);
     const html = await this.get(RESULTS_URL(fromId, toId, from, to, date));
-    return parseResult(html, windows);
+    return parseResult(html, windows, pickups, dropoffs);
+  }
+
+  async points(from: string, to: string, date: string): Promise<{ pickups: string[]; dropoffs: string[] }> {
+    const { fromId, toId } = await this.resolveIds(from, to);
+    const html = await this.get(RESULTS_URL(fromId, toId, from, to, date));
+    const pu = new Map<string, number>();
+    const dp = new Map<string, number>();
+    for (const raw of extractBuses(html)) {
+      for (const p of raw.pickups ?? []) pu.set(p, (pu.get(p) ?? 0) + 1);
+      for (const d of raw.dropOffs ?? []) dp.set(d, (dp.get(d) ?? 0) + 1);
+    }
+    const top = (m: Map<string, number>): string[] =>
+      [...m.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([name]) => name);
+    return { pickups: top(pu), dropoffs: top(dp) };
   }
 
   async stop(): Promise<void> {

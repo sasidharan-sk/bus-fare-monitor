@@ -35,13 +35,13 @@ export async function runCheck(announce = false): Promise<CheckResult> {
           continue;
         }
         const site = siteOf(route);
-        const key = routeKey(site, src.name, dst.name, route.date, route.windows);
+        const key = routeKey(site, src.name, dst.name, route.date, route.windows, route.pickups, route.dropoffs);
         try {
           let data: ScrapedResult;
           if (site === "cleartrip") {
-            data = await cleartrip!.fetch(src.name, dst.name, route.date, route.windows);
+            data = await cleartrip!.fetch(src.name, dst.name, route.date, route.windows, route.pickups, route.dropoffs);
           } else {
-            data = await redbus!.fetch(src.id, dst.id, route.date, route.windows);
+            data = await redbus!.fetch(src.id, dst.id, route.date, route.windows, route.pickups, route.dropoffs);
           }
           const checkedAt = new Date().toISOString().slice(0, 19);
           const prev = prices[key];
