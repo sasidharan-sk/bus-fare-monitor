@@ -1,4 +1,5 @@
 import { chromium, type Browser, type Page } from "playwright";
+import { readFileSync, writeFileSync } from "node:fs";
 import type { Bus, ScrapedResult } from "../types.js";
 import { pointMatches } from "./match.js";
 
@@ -61,6 +62,26 @@ const RESULTS_URL = (fromId: number, toId: number, from: string, to: string, dat
   `&journeyDate=${date}&fromCityName=${encodeURIComponent(from)}&toCityName=${encodeURIComponent(to)}`;
 
 const idCache = new Map<string, { fromId: number; toId: number }>();
+const ID_CACHE_FILE = new URL("../../city-ids.json", import.meta.url);
+
+function loadIdCache(): void {
+  try {
+    const raw = JSON.parse(readFileSync(ID_CACHE_FILE, "utf8")) as Record<string, { fromId: number; toId: number }>;
+    for (const [k, v] of Object.entries(raw)) idCache.set(k, v);
+  } catch {
+    /* no cache yet */
+  }
+}
+
+function saveIdCache(): void {
+  try {
+    writeFileSync(ID_CACHE_FILE, JSON.stringify(Object.fromEntries(idCache), null, 2));
+  } catch (exc) {
+    console.error("city id cache save failed:", exc);
+  }
+}
+
+loadIdCache();
 
 interface RawBus {
   deptTime?: string;
@@ -170,7 +191,11 @@ export class CleartripScraper {
     if (direct.ok) return direct.text;
     attempts.push(`direct ${direct.status}`);
 
-    const reef = await tryFetch(viaReef(url));
+    let reef = await tryFetch(viaReef(url));
+    if (!reef.ok && reef.status === "429") {
+      await new Promise((r) => setTimeout(r, 20_000));
+      reef = await tryFetch(viaReef(url));
+    }
     if (reef.ok) return reef.text;
     attempts.push(`reef ${reef.status}`);
 
@@ -206,6 +231,7 @@ export class CleartripScraper {
     if (!fromId || !toId) throw new Error(`ClearTrip: route ${from} → ${to} not found`);
     const ids = { fromId: Number(fromId[1]), toId: Number(toId[1]) };
     idCache.set(key, ids);
+    saveIdCache();
     return ids;
   }
 

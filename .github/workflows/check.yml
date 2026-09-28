@@ -45,3 +45,12 @@ jobs:
 
       - name: Run bot (check on start, poll for commands)
         run: node dist/bot.js
+
+      - name: Save city id cache
+        run: |
+          if [ -n "$(git status --porcelain city-ids.json)" ]; then
+            git add city-ids.json
+            git commit -m "Update city id cache" || true
+            git pull --rebase --autostash || true
+            git push || true
+          fi
