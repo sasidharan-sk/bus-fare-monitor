@@ -46,11 +46,22 @@ jobs:
       - name: Run bot (check on start, poll for commands)
         run: node dist/bot.js
 
-      - name: Save city id cache
+      - name: Upload parse-failure artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: parse-failures
+          path: debug/
+          if-no-files-found: ignore
+
+      - name: Persist state
+        if: always()
         run: |
-          if [ -n "$(git status --porcelain city-ids.json)" ]; then
-            git add city-ids.json
-            git commit -m "Update city id cache" || true
+          for f in city-ids.json prices.json check-status.json; do
+            if [ -f "$f" ]; then git add "$f"; fi
+          done
+          if [ -n "$(git status --porcelain -- city-ids.json prices.json check-status.json)" ]; then
+            git commit -m "Update bot state" || true
             git pull --rebase --autostash || true
             git push || true
           fi

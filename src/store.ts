@@ -1,5 +1,5 @@
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
-import { PRICES_FILE, ROUTES_FILE } from "./config.js";
+import { PRICES_FILE, ROUTES_FILE, resolveCity } from "./config.js";
 import type { Site } from "./types.js";
 
 export interface Route {
@@ -93,5 +93,22 @@ export function loadPrices(): Record<string, PriceRecord> {
 }
 
 export function savePrices(prices: Record<string, PriceRecord>): void {
-  writeJson(PRICES_FILE, prices);
+  const active = new Set(
+    loadRoutes().map((r) =>
+      routeKey(
+        r.site ?? "redbus",
+        resolveCity(r.source)?.name ?? r.source,
+        resolveCity(r.destination)?.name ?? r.destination,
+        r.date,
+        r.windows,
+        r.pickups ?? [],
+        r.dropoffs ?? [],
+      ),
+    ),
+  );
+  const pruned: Record<string, PriceRecord> = {};
+  for (const [key, rec] of Object.entries(prices)) {
+    if (active.has(key)) pruned[key] = rec;
+  }
+  writeJson(PRICES_FILE, pruned);
 }

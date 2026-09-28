@@ -73,6 +73,20 @@ export const pickTime = (from: string, to: string, date: string, site?: SiteChoi
   `${routeLine(from, to, date, site)}\nPick departure time <i>(tap to toggle, pick several)</i>:`;
 export const CANCELLED = "Cancelled. Send <code>/add</code> to start again.";
 export const SESSION_EXPIRED = "Session expired. Send <code>/add</code> again.";
+
+export function failStreakText(site: Site, fails: number, error: string): string {
+  return [
+    `<b>${SITE_LABELS[site]} check failing</b>`,
+    `Failed ${fails} checks in a row.`,
+    `Last error: <code>${esc(error.slice(0, 300))}</code>`,
+    `Will keep retrying every check cycle.`,
+  ].join("\n");
+}
+
+export function recoveredText(site: Site, fails: number): string {
+  const noun = fails === 1 ? "check" : "checks";
+  return `<b>${SITE_LABELS[site]} check recovered</b>\nWorking again after ${fails} failed ${noun}.`;
+}
 export const LOADING_POINTS = "Loading pick-up & drop points for this route…";
 export const pickPickup = (from: string, to: string): string =>
   `<b>${esc(from)} → ${esc(to)}</b>\nSelect pick-up point(s) <i>(tap to toggle, Done = any point)</i>:`;

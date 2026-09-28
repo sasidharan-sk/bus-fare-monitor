@@ -1,6 +1,7 @@
 import { chromium, type Browser, type Page } from "playwright";
 import type { ScrapedResult } from "../types.js";
 import { pointMatches } from "./match.js";
+import { dumpPayload } from "./dump.js";
 
 const SEARCH_URL = (src: string, dst: string, doj: string) =>
   `https://www.redbus.in/rpw/api/searchResults?fromCity=${src}&toCity=${dst}&DOJ=${doj}` +
@@ -51,7 +52,11 @@ export function parseResult(
   dropoffs: string[] = [],
 ): ScrapedResult {
   if (data.error !== undefined) throw new Error(`RedBus API error ${data.error}`);
-  const inventories = data.data?.inventories ?? [];
+  if (!data.data) {
+    dumpPayload("redbus", JSON.stringify(data));
+    throw new Error("RedBus: unexpected API payload shape");
+  }
+  const inventories = data.data.inventories ?? [];
   const buses: ScrapedResult["cheapest"] = [];
   for (const inv of inventories) {
     const fares = inv.fareList ?? [];

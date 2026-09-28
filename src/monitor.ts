@@ -2,6 +2,7 @@ import { PRICE_DROP_THRESHOLD, resolveCity } from "./config.js";
 import { send } from "./alerts.js";
 import { dropText, summaryText } from "./messages.js";
 import { loadPrices, loadRoutes, savePrices, routeKey } from "./store.js";
+import { recordSiteStatus } from "./status.js";
 import { CleartripScraper } from "./scraper/cleartrip.js";
 import { RedbusScraper } from "./scraper/redbus.js";
 import type { CheckResult, RouteResult, Site, ScrapedResult } from "./types.js";
@@ -20,6 +21,7 @@ export async function runCheck(announce = false): Promise<CheckResult> {
     const prices = loadPrices();
     const results: RouteResult[] = [];
     const errors: string[] = [];
+    const attempts: Array<{ site: Site; ok: boolean; error?: string }> = [];
 
     const needsRedbus = routes.some((r) => siteOf(r) === "redbus");
     const needsCleartrip = routes.some((r) => siteOf(r) === "cleartrip");
@@ -51,6 +53,7 @@ export async function runCheck(announce = false): Promise<CheckResult> {
               await send(dropText(src.name, dst.name, route, prev.min, data));
             }
           }
+          attempts.push({ site, ok: true });
           results.push({
             route,
             source: src.name,
@@ -60,12 +63,20 @@ export async function runCheck(announce = false): Promise<CheckResult> {
           });
         } catch (exc) {
           errors.push(`${src.name} → ${dst.name} (${route.date}): ${exc}`);
+          attempts.push({ site, ok: false, error: String(exc) });
         }
       }
       savePrices(prices);
     } finally {
       await redbus?.stop();
       await cleartrip?.stop();
+    }
+
+    for (const site of ["redbus", "cleartrip"] as Site[]) {
+      const list = attempts.filter((a) => a.site === site);
+      if (list.length === 0) continue;
+      const failed = list.find((a) => !a.ok);
+      await recordSiteStatus(site, failed === undefined, failed?.error);
     }
 
     if (announce && (results.length > 0 || errors.length > 0)) {

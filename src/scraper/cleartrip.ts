@@ -2,6 +2,7 @@ import { chromium, type Browser, type Page } from "playwright";
 import { readFileSync, writeFileSync } from "node:fs";
 import type { Bus, ScrapedResult } from "../types.js";
 import { pointMatches } from "./match.js";
+import { dumpPayload } from "./dump.js";
 
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
@@ -92,43 +93,49 @@ interface RawBus {
 }
 
 export function extractBuses(html: string): RawBus[] {
-  const anchor = html.indexOf("totalAvailBuses");
-  const marker = 'buses\\":[';
-  const at = html.indexOf(marker, anchor === -1 ? 0 : anchor);
-  if (at === -1) throw new Error("ClearTrip: bus list not found in page");
-  const start = at + marker.length - 1;
+  let parsed: RawBus[];
+  try {
+    const anchor = html.indexOf("totalAvailBuses");
+    const marker = 'buses\\":[';
+    const at = html.indexOf(marker, anchor === -1 ? 0 : anchor);
+    if (at === -1) throw new Error("ClearTrip: bus list not found in page");
+    const start = at + marker.length - 1;
 
-  let depth = 0;
-  let inString = false;
-  let end = -1;
-  for (let i = start; i < html.length; i++) {
-    const c = html[i];
-    if (c === "\\") {
-      const next = html[i + 1];
-      if (next === '"') inString = !inString;
-      i++;
-      continue;
-    }
-    if (inString) continue;
-    if (c === '"') {
-      inString = true;
-      continue;
-    }
-    if (c === "[" || c === "{") depth++;
-    else if (c === "]" || c === "}") {
-      depth--;
-      if (depth === 0) {
-        end = i + 1;
-        break;
+    let depth = 0;
+    let inString = false;
+    let end = -1;
+    for (let i = start; i < html.length; i++) {
+      const c = html[i];
+      if (c === "\\") {
+        const next = html[i + 1];
+        if (next === '"') inString = !inString;
+        i++;
+        continue;
+      }
+      if (inString) continue;
+      if (c === '"') {
+        inString = true;
+        continue;
+      }
+      if (c === "[" || c === "{") depth++;
+      else if (c === "]" || c === "}") {
+        depth--;
+        if (depth === 0) {
+          end = i + 1;
+          break;
+        }
       }
     }
-  }
-  if (end === -1) throw new Error("ClearTrip: bus list truncated");
+    if (end === -1) throw new Error("ClearTrip: bus list truncated");
 
-  const raw = html.slice(start, end).replace(/\\"/g, '"');
-  const parsed = JSON.parse(raw) as RawBus[];
-  if (!Array.isArray(parsed)) throw new Error("ClearTrip: unexpected bus list shape");
-  return parsed;
+    const raw = html.slice(start, end).replace(/\\"/g, '"');
+    parsed = JSON.parse(raw) as RawBus[];
+    if (!Array.isArray(parsed)) throw new Error("ClearTrip: unexpected bus list shape");
+    return parsed;
+  } catch (exc) {
+    dumpPayload("cleartrip", html);
+    throw exc;
+  }
 }
 
 function departureHour(dep: string): number | null {
@@ -228,7 +235,10 @@ export class CleartripScraper {
     const html = await this.get(SEO_URL(from, to));
     const fromId = html.match(/\\"fromCityId\\":(\d+)/);
     const toId = html.match(/\\"toCityId\\":(\d+)/);
-    if (!fromId || !toId) throw new Error(`ClearTrip: route ${from} → ${to} not found`);
+    if (!fromId || !toId) {
+      dumpPayload("cleartrip-seo", html);
+      throw new Error(`ClearTrip: route ${from} → ${to} not found`);
+    }
     const ids = { fromId: Number(fromId[1]), toId: Number(toId[1]) };
     idCache.set(key, ids);
     saveIdCache();

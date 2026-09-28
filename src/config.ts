@@ -4,6 +4,7 @@ export const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN ?? "";
 export const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID ?? "";
 export const CHECK_INTERVAL_HOURS = Number(process.env.CHECK_INTERVAL_HOURS ?? 2);
 export const PRICE_DROP_THRESHOLD = Number(process.env.PRICE_DROP_THRESHOLD ?? 50);
+export const FAIL_ALERT_AFTER = Number(process.env.FAIL_ALERT_AFTER ?? 3);
 
 export interface City {
   name: string;
@@ -35,3 +36,4 @@ export const WINDOW_LABELS: Record<string, string> = Object.fromEntries(WINDOWS)
 
 export const ROUTES_FILE = "routes.json";
 export const PRICES_FILE = "prices.json";
+export const STATUS_FILE = "check-status.json";
