@@ -46,8 +46,10 @@ const routeLine = (source: string, destination: string, date: string, site?: Sit
 export const HELP = [
   "<b>Bus Fare Monitor</b>",
   "",
-  "<code>/add</code> — watch a new route (site, city, date, time & pick-up/drop points)",
+  "<code>/add</code> — watch a new route (site, city, date, time, points, target fare)",
   "<code>/list</code> — show watched routes",
+  "<code>/edit</code> — change site, date, time, points or target",
+  "<code>/pause</code> — pause or resume routes",
   "<code>/remove</code> — stop watching (multi-select picker)",
   "<code>/check</code> — check prices now",
   "<code>/help</code> — this message",
@@ -128,10 +130,11 @@ export function listText(routes: Route[]): string {
   for (const [site, group] of orderedGroups(routes, (r) => r.site ?? "redbus")) {
     lines.push("", siteTitle(site), "");
     for (const r of group) {
-      lines.push(`<b>#${r.id}</b>  ${routeLine(r.source, r.destination, r.date)}`);
+      lines.push(`<b>#${r.id}</b>  ${routeLine(r.source, r.destination, r.date)}${r.paused ? " · <i>paused</i>" : ""}`);
       lines.push(`     <i>${esc(fmtWindows(r))}</i>`);
       const pts = fmtPoints(r);
       if (pts) lines.push(`     <i>${pts}</i>`);
+      if (r.target !== undefined) lines.push(`     Target: <b>${fmtRs(r.target)}</b>`);
     }
   }
   return lines.join("\n");
@@ -139,6 +142,35 @@ export function listText(routes: Route[]): string {
 
 export const removedText = (id: number): string => `Removed <b>#${id}</b>.`;
 export const notFoundText = (id: number): string => `No route with id <b>#${id}</b>.`;
+
+export const PAUSE_PICK = "Tap a route to pause or resume it:";
+export const pauseDoneText = "Done. Send <code>/list</code> to review your routes.";
+export const ALL_PAUSED = "All routes are paused. Send <code>/pause</code> to resume one.";
+
+export const EDIT_PICK = "Select a route to edit:";
+export const EDIT_SITE = "<b>Change site</b>\nPrice history for this route restarts on the new site.";
+export function editMenuText(r: Route): string {
+  return [
+    `<b>Edit #${r.id}</b>`,
+    routeLine(r.source, r.destination, r.date, r.site),
+    `<i>${esc(fmtWindows(r))}</i>`,
+    r.target !== undefined ? `Target: <b>${fmtRs(r.target)}</b>` : "Target: not set",
+    r.paused ? "<i>(paused)</i>" : "",
+    "Choose what to change:",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+export const updatedText = (r: Route): string =>
+  `Route <b>#${r.id}</b> updated. Send <code>/list</code> to review.`;
+
+export const TARGET_PROMPT =
+  "Send a target fare as a number (e.g. <code>450</code>), or <code>/clear</code> to remove:";
+export const TARGET_INVALID =
+  "That doesn't look like a fare. Send a number like <code>450</code>, or <code>/clear</code>.";
+export const targetSetText = (id: number, n: number): string =>
+  `Target for <b>#${id}</b> set to <b>${fmtRs(n)}</b>. Alert fires once while the fare stays at or below it.`;
+export const targetClearedText = (id: number): string => `Target removed from <b>#${id}</b>.`;
 export const removePickText = (note?: string): string =>
   [note ? `${note}\n` : "", "<b>Remove routes</b>", "Tap to select, then <b>Remove selected</b>:"].join("\n");
 export const removeDoneText = "Done. Send <code>/list</code> to review your routes.";
@@ -174,6 +206,23 @@ export function dropText(
     `<i>${esc(fmtWindows(route))}</i>`,
     "",
     `<s>${fmtRs(prevMin)}</s> → <b>${fmtRs(now)}</b>`,
+    `Cheapest: ${esc(b.operator)} · dep <code>${fmtTime(b.departure)}</code>`,
+    `${data.count} buses checked`,
+  ].join("\n");
+}
+
+export function targetHitText(
+  source: string,
+  destination: string,
+  route: Route,
+  data: ScrapedResult,
+): string {
+  const b = data.cheapest[0];
+  return [
+    `<b>TARGET HIT · ${fmtRs(data.min ?? 0)} at or below ${fmtRs(route.target ?? 0)}</b>`,
+    routeLine(source, destination, route.date, route.site ?? "redbus"),
+    `<i>${esc(fmtWindows(route))}</i>`,
+    "",
     `Cheapest: ${esc(b.operator)} · dep <code>${fmtTime(b.departure)}</code>`,
     `${data.count} buses checked`,
   ].join("\n");

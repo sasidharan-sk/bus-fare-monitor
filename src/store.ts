@@ -11,11 +11,14 @@ export interface Route {
   site?: Site;
   pickups?: string[];
   dropoffs?: string[];
+  target?: number;
+  paused?: boolean;
 }
 
 export interface PriceRecord {
   min: number;
   checked_at: string;
+  target_armed?: boolean;
 }
 
 function readJson<T>(path: string, fallback: T): T {
@@ -50,6 +53,7 @@ export function addRoute(
   site: Site = "redbus",
   pickups: string[] = [],
   dropoffs: string[] = [],
+  target?: number,
 ): Route {
   const routes = loadRoutes();
   const id = routes.reduce((max, r) => Math.max(max, r.id), 0) + 1;
@@ -58,6 +62,7 @@ export function addRoute(
   const dp = sortedPoints(dropoffs);
   if (pu.length > 0) route.pickups = pu;
   if (dp.length > 0) route.dropoffs = dp;
+  if (target !== undefined && target > 0) route.target = Math.round(target);
   routes.push(route);
   saveRoutes(routes);
   return route;
@@ -69,6 +74,17 @@ export function removeRoute(id: number): boolean {
   if (kept.length === routes.length) return false;
   saveRoutes(kept);
   return true;
+}
+
+export function updateRoute(id: number, patch: Partial<Route>): Route | null {
+  const routes = loadRoutes();
+  const idx = routes.findIndex((r) => r.id === id);
+  if (idx === -1) return null;
+  const updated: Route = { ...routes[idx], ...patch, id: routes[idx].id };
+  if (updated.paused === false) delete updated.paused;
+  routes[idx] = updated;
+  saveRoutes(routes);
+  return updated;
 }
 
 export function routeKey(

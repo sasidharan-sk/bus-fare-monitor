@@ -1,7 +1,7 @@
-import { PRICE_DROP_THRESHOLD, resolveCity } from "./config.js";
+import { PRICE_DROP_PCT, PRICE_DROP_THRESHOLD, resolveCity } from "./config.js";
 import { send } from "./alerts.js";
-import { dropText, summaryText } from "./messages.js";
-import { loadPrices, loadRoutes, savePrices, routeKey } from "./store.js";
+import { dropText, summaryText, targetHitText } from "./messages.js";
+import { loadPrices, loadRoutes, savePrices, routeKey, type PriceRecord } from "./store.js";
 import { recordSiteStatus } from "./status.js";
 import { CleartripScraper } from "./scraper/cleartrip.js";
 import { RedbusScraper } from "./scraper/redbus.js";
@@ -15,7 +15,7 @@ export async function runCheck(announce = false): Promise<CheckResult> {
   if (running) return { status: "busy", results: [], errors: [] };
   running = true;
   try {
-    const routes = loadRoutes();
+    const routes = loadRoutes().filter((r) => !r.paused);
     if (routes.length === 0) return { status: "empty", results: [], errors: [] };
 
     const prices = loadPrices();
@@ -48,10 +48,25 @@ export async function runCheck(announce = false): Promise<CheckResult> {
           const checkedAt = new Date().toISOString().slice(0, 19);
           const prev = prices[key];
           if (data.min !== null) {
-            prices[key] = { min: data.min, checked_at: checkedAt };
-            if (prev && prev.min - data.min >= PRICE_DROP_THRESHOLD) {
-              await send(dropText(src.name, dst.name, route, prev.min, data));
+            const rec: PriceRecord = { min: data.min, checked_at: checkedAt };
+            if (prev?.target_armed !== undefined) rec.target_armed = prev.target_armed;
+            if (prev) {
+              const drop = prev.min - data.min;
+              const pct = prev.min > 0 ? (drop / prev.min) * 100 : 0;
+              if (drop >= PRICE_DROP_THRESHOLD || (drop > 0 && pct >= PRICE_DROP_PCT)) {
+                await send(dropText(src.name, dst.name, route, prev.min, data));
+              }
             }
+            if (route.target !== undefined && data.min !== null) {
+              const armed = rec.target_armed ?? true;
+              if (data.min <= route.target && armed) {
+                rec.target_armed = false;
+                await send(targetHitText(src.name, dst.name, route, data));
+              } else if (data.min > route.target) {
+                rec.target_armed = true;
+              }
+            }
+            prices[key] = rec;
           }
           attempts.push({ site, ok: true });
           results.push({
