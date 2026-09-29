@@ -5,6 +5,7 @@ const WORKFLOW = "check.yml";
 const ghHeaders = (token) => ({
   authorization: `Bearer ${token}`,
   accept: "application/vnd.github+json",
+  "user-agent": "bus-fare-proxy-cron",
   "x-github-api-version": "2022-11-28",
 });
 
