@@ -5,6 +5,7 @@ import { exec } from "node:child_process";
 import {
   CHECK_INTERVAL_HOURS,
   CITY_NAMES,
+  RUN_WINDOW_MINUTES,
   TELEGRAM_BOT_TOKEN,
   TELEGRAM_CHAT_ID,
   WINDOWS,
@@ -738,6 +739,13 @@ async function main(): Promise<void> {
     runCheck(true).catch((exc) => send(errorText(exc)).catch(() => undefined));
   }, CHECK_INTERVAL_HOURS * 3600_000);
   bot.start({ drop_pending_updates: false });
+  if (RUN_WINDOW_MINUTES > 0) {
+    setTimeout(() => {
+      console.log(`run window of ${RUN_WINDOW_MINUTES} minutes over; exiting cleanly`);
+      bot.stop();
+      process.exit(0);
+    }, RUN_WINDOW_MINUTES * 60_000);
+  }
 }
 
 main().catch((exc) => {

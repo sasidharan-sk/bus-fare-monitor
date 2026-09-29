@@ -4,3 +4,5 @@ dist/
 *.log
 debug/
 proxy-worker/login.out
+proxy-worker/.dev.vars
+.wrangler/
