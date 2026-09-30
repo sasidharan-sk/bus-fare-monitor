@@ -46,14 +46,18 @@ export function bookKeyboard(site: Site, from: string, to: string, date: string)
 export function summaryKeyboard(results: RouteResult[]): InlineKeyboard | undefined {
   const bookable = results.filter((r) => r.data.min !== null).slice(0, 10);
   if (bookable.length === 0) return undefined;
+  const order: Record<string, number> = { redbus: 0, cleartrip: 1 };
+  const sorted = [...bookable].sort(
+    (a, b) => order[a.route.site ?? "redbus"] - order[b.route.site ?? "redbus"],
+  );
   const kb = new InlineKeyboard();
-  for (const r of bookable) {
+  sorted.forEach((r, i) => {
     const site: Site = r.route.site ?? "redbus";
-    if (kb.inline_keyboard.some((row) => row.length > 0)) kb.row();
+    if (i > 0 && i % 2 === 0) kb.row();
     kb.url(
-      `Book ${r.source} → ${r.destination} · ${fmtDate(r.route.date)}`,
+      `${r.source} → ${r.destination} · ${fmtDate(r.route.date).slice(0, 6)} · ${site === "cleartrip" ? "ClearTrip" : "RedBus"}`,
       bookingUrl(site, r.source, r.destination, r.route.date),
     );
-  }
+  });
   return kb;
 }
