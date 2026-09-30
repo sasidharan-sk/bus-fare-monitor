@@ -1,6 +1,7 @@
 import { PRICE_DROP_PCT, PRICE_DROP_THRESHOLD, resolveCity } from "./config.js";
 import { send } from "./alerts.js";
 import { dropText, summaryText, targetHitText } from "./messages.js";
+import { bookKeyboard } from "./links.js";
 import { loadPrices, loadRoutes, savePrices, routeKey, type PriceRecord } from "./store.js";
 import { recordSiteStatus } from "./status.js";
 import { CleartripScraper } from "./scraper/cleartrip.js";
@@ -54,14 +55,18 @@ export async function runCheck(announce = false): Promise<CheckResult> {
               const drop = prev.min - data.min;
               const pct = prev.min > 0 ? (drop / prev.min) * 100 : 0;
               if (drop >= PRICE_DROP_THRESHOLD || (drop > 0 && pct >= PRICE_DROP_PCT)) {
-                await send(dropText(src.name, dst.name, route, prev.min, data));
+                await send(dropText(src.name, dst.name, route, prev.min, data), {
+                  keyboard: bookKeyboard(site, src.name, dst.name, route.date),
+                });
               }
             }
             if (route.target !== undefined && data.min !== null) {
               const armed = rec.target_armed ?? true;
               if (data.min <= route.target && armed) {
                 rec.target_armed = false;
-                await send(targetHitText(src.name, dst.name, route, data));
+                await send(targetHitText(src.name, dst.name, route, data), {
+                  keyboard: bookKeyboard(site, src.name, dst.name, route.date),
+                });
               } else if (data.min > route.target) {
                 rec.target_armed = true;
               }
