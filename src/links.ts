@@ -1,63 +1,12 @@
 import { InlineKeyboard } from "grammy";
-import { resolveCity } from "./config.js";
-import { fmtDate } from "./messages.js";
-import type { RouteResult, Site } from "./types.js";
+import { bookingUrl } from "./urls.js";
+import type { Site } from "./types.js";
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-const slug = (city: string): string =>
-  city.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-
-function redbusUrl(from: string, to: string, date: string): string {
-  const src = resolveCity(from);
-  const dst = resolveCity(to);
-  const [y, m, d] = date.split("-");
-  const onward = `${d}-${MONTHS[Number(m) - 1]}-${y}`;
-  if (!src || !dst) return "https://www.redbus.in/";
-  const params = new URLSearchParams({
-    fromCityName: src.name,
-    fromCityId: src.id,
-    toCityName: dst.name,
-    toCityId: dst.id,
-    onward,
-    srcCountry: "IND",
-    destCountry: "IND",
-    opId: "0",
-    busType: "Any",
-  });
-  return `https://www.redbus.in/bus-tickets/${slug(from)}-to-${slug(to)}?${params}`;
-}
-
-function cleartripUrl(from: string, to: string): string {
-  return `https://www.cleartrip.com/bus-tickets/${slug(from)}-to-${slug(to)}/`;
-}
-
-export function bookingUrl(site: Site, from: string, to: string, date: string): string {
-  return site === "cleartrip" ? cleartripUrl(from, to) : redbusUrl(from, to, date);
-}
+export { bookingUrl } from "./urls.js";
 
 export function bookKeyboard(site: Site, from: string, to: string, date: string): InlineKeyboard {
   return new InlineKeyboard().url(
     site === "cleartrip" ? "Open on ClearTrip" : "Book on RedBus",
     bookingUrl(site, from, to, date),
   );
-}
-
-export function summaryKeyboard(results: RouteResult[]): InlineKeyboard | undefined {
-  const bookable = results.filter((r) => r.data.min !== null).slice(0, 10);
-  if (bookable.length === 0) return undefined;
-  const order: Record<string, number> = { redbus: 0, cleartrip: 1 };
-  const sorted = [...bookable].sort(
-    (a, b) => order[a.route.site ?? "redbus"] - order[b.route.site ?? "redbus"],
-  );
-  const kb = new InlineKeyboard();
-  sorted.forEach((r, i) => {
-    const site: Site = r.route.site ?? "redbus";
-    if (i > 0 && i % 2 === 0) kb.row();
-    kb.url(
-      `${r.source} → ${r.destination} · ${fmtDate(r.route.date).slice(0, 6)} · ${site === "cleartrip" ? "ClearTrip" : "RedBus"}`,
-      bookingUrl(site, r.source, r.destination, r.route.date),
-    );
-  });
-  return kb;
 }

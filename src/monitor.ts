@@ -1,7 +1,7 @@
 import { PRICE_DROP_PCT, PRICE_DROP_THRESHOLD, resolveCity } from "./config.js";
 import { send } from "./alerts.js";
 import { dropText, summaryText, targetHitText } from "./messages.js";
-import { bookKeyboard, summaryKeyboard } from "./links.js";
+import { bookKeyboard } from "./links.js";
 import { loadPrices, loadRoutes, savePrices, routeKey, type PriceRecord } from "./store.js";
 import { recordSiteStatus } from "./status.js";
 import { CleartripScraper } from "./scraper/cleartrip.js";
@@ -100,8 +100,7 @@ export async function runCheck(announce = false): Promise<CheckResult> {
     }
 
     if (announce && (results.length > 0 || errors.length > 0)) {
-      const kb = summaryKeyboard(results);
-      await send(summaryText(results, errors), kb ? { keyboard: kb } : {});
+      await send(summaryText(results, errors));
     }
     return { status: "ok", results, errors };
   } finally {

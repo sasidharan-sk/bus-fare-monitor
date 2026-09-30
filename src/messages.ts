@@ -1,4 +1,5 @@
 import { CITY_NAMES, WINDOW_LABELS } from "./config.js";
+import { bookingUrl } from "./urls.js";
 import type { Route } from "./store.js";
 import type { RouteResult, ScrapedResult, Site, SiteChoice } from "./types.js";
 
@@ -234,7 +235,11 @@ export function summaryText(results: RouteResult[], errors: string[]): string {
     lines.push("", siteTitle(site));
     for (const r of group) {
       lines.push("");
-      lines.push(routeLine(r.source, r.destination, r.route.date));
+      const book =
+        r.data.min !== null
+          ? ` · <a href="${esc(bookingUrl(site, r.source, r.destination, r.route.date))}">Book</a>`
+          : "";
+      lines.push(routeLine(r.source, r.destination, r.route.date) + book);
       lines.push(`<i>${esc(fmtWindows(r.route))}</i>`);
       if (r.data.min === null) {
         lines.push(r.data.note ?? "No buses in selected time window");
