@@ -52,6 +52,7 @@ import {
   unknownCityText,
   updatedText,
 } from "./messages.js";
+import { summaryKeyboard } from "./links.js";
 import { addRoute, loadRoutes, removeRoute, updateRoute } from "./store.js";
 import { runCheck } from "./monitor.js";
 import { collectPoints } from "./points.js";
@@ -711,7 +712,11 @@ bot.command("check", async (ctx) => {
       if (res.status === "empty") {
         return ctx.reply(loadRoutes().length > 0 ? ALL_PAUSED : NO_ROUTES, HTML);
       }
-      return ctx.reply(summaryText(res.results, res.errors), HTML);
+      const kb = summaryKeyboard(res.results);
+      return ctx.reply(
+        summaryText(res.results, res.errors),
+        kb ? { ...HTML, reply_markup: kb } : HTML,
+      );
     })
     .catch((exc) => ctx.reply(errorText(exc), HTML));
 });

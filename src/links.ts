@@ -1,6 +1,7 @@
 import { InlineKeyboard } from "grammy";
 import { resolveCity } from "./config.js";
-import type { Site } from "./types.js";
+import { fmtDate } from "./messages.js";
+import type { RouteResult, Site } from "./types.js";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -40,4 +41,19 @@ export function bookKeyboard(site: Site, from: string, to: string, date: string)
     site === "cleartrip" ? "Open on ClearTrip" : "Book on RedBus",
     bookingUrl(site, from, to, date),
   );
+}
+
+export function summaryKeyboard(results: RouteResult[]): InlineKeyboard | undefined {
+  const bookable = results.filter((r) => r.data.min !== null).slice(0, 10);
+  if (bookable.length === 0) return undefined;
+  const kb = new InlineKeyboard();
+  for (const r of bookable) {
+    const site: Site = r.route.site ?? "redbus";
+    if (kb.inline_keyboard.some((row) => row.length > 0)) kb.row();
+    kb.url(
+      `Book ${r.source} → ${r.destination} · ${fmtDate(r.route.date)}`,
+      bookingUrl(site, r.source, r.destination, r.route.date),
+    );
+  }
+  return kb;
 }
