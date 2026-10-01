@@ -30,5 +30,41 @@
     "dropoffs": [
       "Madiwala"
     ]
+  },
+  {
+    "id": 3,
+    "source": "Erode",
+    "destination": "Bangalore",
+    "date": "2026-10-20",
+    "windows": [
+      "0-6",
+      "18-24"
+    ],
+    "site": "redbus",
+    "pickups": [
+      "Erode Bus Stand"
+    ],
+    "dropoffs": [
+      "Madiwala"
+    ],
+    "target": 500
+  },
+  {
+    "id": 4,
+    "source": "Erode",
+    "destination": "Bangalore",
+    "date": "2026-10-20",
+    "windows": [
+      "0-6",
+      "18-24"
+    ],
+    "site": "cleartrip",
+    "pickups": [
+      "Erode Bus Stand"
+    ],
+    "dropoffs": [
+      "Madiwala"
+    ],
+    "target": 500
   }
 ]
