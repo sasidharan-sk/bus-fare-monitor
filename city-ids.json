@@ -6,5 +6,9 @@
   "salem|bangalore": {
     "fromId": 17904,
     "toId": 8902
+  },
+  "bangalore|salem": {
+    "fromId": 8902,
+    "toId": 17904
   }
 }
