@@ -1,11 +1,10 @@
 {
   "redbus": {
     "fails": 0,
-    "lastOk": "2026-10-01T18:24:21"
+    "lastOk": "2026-10-01T22:24:39"
   },
   "cleartrip": {
-    "fails": 1,
-    "lastError": "Error: ClearTrip: bus list not found in page",
-    "lastOk": "2026-10-01T16:24:39"
+    "fails": 0,
+    "lastOk": "2026-10-01T22:24:39"
   }
 }
