@@ -100,5 +100,33 @@
       "Madiwala"
     ],
     "target": 500
+  },
+  {
+    "id": 7,
+    "source": "Salem",
+    "destination": "Bangalore",
+    "date": "2026-10-11",
+    "windows": [
+      "18-24"
+    ],
+    "site": "redbus",
+    "dropoffs": [
+      "Madiwala"
+    ],
+    "target": 450
+  },
+  {
+    "id": 8,
+    "source": "Salem",
+    "destination": "Bangalore",
+    "date": "2026-10-11",
+    "windows": [
+      "18-24"
+    ],
+    "site": "cleartrip",
+    "dropoffs": [
+      "Madiwala"
+    ],
+    "target": 450
   }
 ]
