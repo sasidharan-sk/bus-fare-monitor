@@ -1,60 +1,60 @@
 {
   "redbus:Erode|Bangalore|2026-10-19|18-24|bp:Erode Bus Stand|dp:Madiwala": {
     "min": 514,
-    "checked_at": "2026-10-02T08:23:49"
+    "checked_at": "2026-10-02T10:24:06"
   },
   "cleartrip:Erode|Bangalore|2026-10-19|18-24|bp:Erode Bus Stand|dp:Madiwala": {
     "min": 400,
-    "checked_at": "2026-10-02T08:23:52"
+    "checked_at": "2026-10-02T10:24:08"
   },
   "redbus:Erode|Bangalore|2026-10-20|0-6,18-24|bp:Erode Bus Stand|dp:Madiwala": {
     "min": 1199,
-    "checked_at": "2026-10-02T08:23:53",
+    "checked_at": "2026-10-02T10:24:10",
     "target_armed": true
   },
   "cleartrip:Erode|Bangalore|2026-10-20|0-6,18-24|bp:Erode Bus Stand|dp:Madiwala": {
     "min": 630,
-    "checked_at": "2026-10-02T08:23:56",
+    "checked_at": "2026-10-02T10:24:12",
     "target_armed": true
   },
   "redbus:Erode|Bangalore|2026-10-21|0-6|bp:Erode Bus Stand|dp:Madiwala": {
     "min": 1138,
-    "checked_at": "2026-10-02T08:23:57",
+    "checked_at": "2026-10-02T10:24:13",
     "target_armed": true
   },
   "cleartrip:Erode|Bangalore|2026-10-21|0-6|bp:Erode Bus Stand|dp:Madiwala": {
     "min": 1149,
-    "checked_at": "2026-10-02T08:23:59",
+    "checked_at": "2026-10-02T10:24:15",
     "target_armed": true
   },
   "redbus:Salem|Bangalore|2026-10-11|18-24|dp:Madiwala": {
     "min": 709,
-    "checked_at": "2026-10-02T08:24:01",
+    "checked_at": "2026-10-02T10:24:16",
     "target_armed": true
   },
   "cleartrip:Salem|Bangalore|2026-10-11|18-24|dp:Madiwala": {
     "min": 549,
-    "checked_at": "2026-10-02T08:24:06",
+    "checked_at": "2026-10-02T10:24:22",
     "target_armed": true
   },
   "redbus:Salem|Bangalore|2026-10-12|0-6|dp:Madiwala": {
     "min": 703,
-    "checked_at": "2026-10-02T08:24:07",
+    "checked_at": "2026-10-02T10:24:24",
     "target_armed": true
   },
   "cleartrip:Salem|Bangalore|2026-10-12|0-6|dp:Madiwala": {
     "min": 406,
-    "checked_at": "2026-10-02T08:24:12",
+    "checked_at": "2026-10-02T10:24:29",
     "target_armed": false
   },
   "redbus:Bangalore|Salem|2026-10-09|12-18,18-24|bp:Madiwala": {
     "min": 614,
-    "checked_at": "2026-10-02T08:24:15",
+    "checked_at": "2026-10-02T10:24:30",
     "target_armed": true
   },
   "cleartrip:Bangalore|Salem|2026-10-09|12-18,18-24|bp:Madiwala": {
     "min": 399,
-    "checked_at": "2026-10-02T08:24:20",
+    "checked_at": "2026-10-02T10:24:37",
     "target_armed": false
   }
 }
