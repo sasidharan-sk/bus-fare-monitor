@@ -1,30 +1,30 @@
 {
   "redbus:Erode|Bangalore|2026-10-19|18-24|bp:Erode Bus Stand|dp:Madiwala": {
-    "min": 557,
-    "checked_at": "2026-10-18T02:23:56"
+    "min": 431,
+    "checked_at": "2026-10-18T04:20:32"
   },
   "cleartrip:Erode|Bangalore|2026-10-19|18-24|bp:Erode Bus Stand|dp:Madiwala": {
     "min": 495,
-    "checked_at": "2026-10-18T02:24:00"
+    "checked_at": "2026-10-18T04:20:36"
   },
   "redbus:Erode|Bangalore|2026-10-20|0-6,18-24|bp:Erode Bus Stand|dp:Madiwala": {
     "min": 706,
-    "checked_at": "2026-10-18T02:24:01",
+    "checked_at": "2026-10-18T04:20:37",
     "target_armed": true
   },
   "cleartrip:Erode|Bangalore|2026-10-20|0-6,18-24|bp:Erode Bus Stand|dp:Madiwala": {
     "min": 542,
-    "checked_at": "2026-10-18T02:24:04",
+    "checked_at": "2026-10-18T04:20:39",
     "target_armed": true
   },
   "redbus:Erode|Bangalore|2026-10-21|0-6|bp:Erode Bus Stand|dp:Madiwala": {
     "min": 953,
-    "checked_at": "2026-10-18T02:24:05",
+    "checked_at": "2026-10-18T04:20:40",
     "target_armed": true
   },
   "cleartrip:Erode|Bangalore|2026-10-21|0-6|bp:Erode Bus Stand|dp:Madiwala": {
     "min": 523,
-    "checked_at": "2026-10-18T02:24:08",
+    "checked_at": "2026-10-18T04:20:42",
     "target_armed": true
   }
 }
